@@ -1,0 +1,4 @@
+'Public Enum enuMultiply
+'    eAsNumber = 1
+'    eAsString = 0
+'End Enum
