@@ -2,3 +2,75 @@
 '    eAsNumber = 1
 '    eAsString = 0
 'End Enum
+
+
+ lCol = lCol + 1
+'                    T(lRow, lCol) = rCell.Value
+'                Next rCell
+'            Next vKey
+'    End Select
+'    End With
+'
+'    CopyDictionaryToArray = T
+'
+'End Function
+
+Sub test_GetArrayRow()
+    Dim v(1 To 2, 1 To 4) As Variant
+    Dim k(1 To 4) As Variant
+    Dim temp
+    
+    v(1, 1) = "A"
+    v(1, 2) = "B"
+    v(1, 3) = "C"
+    v(1, 4) = "D"
+    v(2, 1) = "e"
+    v(2, 2) = "f"
+    v(2, 3) = "g"
+    v(2, 4) = "h"
+    
+    k(1) = "!"
+    k(2) = "@"
+    k(3) = "#"
+    k(4) = "$"
+    
+    temp = GetArrayRow(k, 1)
+End Sub
+
+Function GetArrayRow(ByVal arrTable As Variant, Optional lRowNo As Long = 1) As Variant
+    Dim iIndex As Integer
+    Dim iDimensions As Integer
+    Dim arrTemporary As Variant
+    
+    If Not IsArray(arrTable) Then Exit Function
+    If lRowNo > UBound(arrTable, 1) Then Exit Function
+    iDimensions = GetDimension(arrTable)
+    
+    ReDim arrTemporary(1 To 1, 1 To UBound(arrTable, iDimensions))
+    For iIndex = LBound(arrTable, iDimensions) To UBound(arrTable, iDimensions)
+        If iDimensions = 1 Then
+            arrTemporary(1, iIndex) = arrTable(iIndex)
+            
+        ElseIf iDimensions = 2 Then
+            arrTemporary(1, iIndex) = arrTable(lRowNo, iIndex)
+        
+        End If
+    Next
+        
+    GetArrayRow = arrTemporary
+
+End Function
+    Private Function GetDimension(var As Variant) As Long
+        On Error GoTo Err
+        Dim i As Long
+        Dim tmp As Long
+        i = 0
+        Do While True
+            i = i + 1
+            tmp = UBound(var, i)
+        Loop
+Err:
+        GetDimension = i - 1
+    End Function
+
+Public Sub PasteArrayToTabel(ByVal arrSourceTab
