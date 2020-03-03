@@ -1,0 +1,442 @@
+
+Option Private Module
+Option Explicit
+'<?>======================================================================================================================================================
+'Create by:     Biel, Dawid
+'Updated on:    2020-03-03 15:40
+'
+'Contents of 'VBEditor_v1_09':
+'1  Sub         CallAll
+'2  Sub         ClearAll
+'3  Sub         CreateInfoContents
+'4  Function    GetProceduresFromModuleToArray
+'5  Function    ProcKindString
+'6  Function    GetVBCodeLineNo
+'7  Sub         AddHDR
+'8  Sub         AddLOC
+'9  Sub         ClearInfoContents
+'10 Sub         ClearLines
+'
+'Requirements:
+'   References -    Microsoft Visual Basic for Applications Extensibility 5.3 --> [C:\Program Files (x86)\Common Files\Microsoft Shared\VBA\VBA6\VBE6EXT.OLB]
+'<?>======================================================================================================================================================
+ 
+Public vbProj As VBIDE.VBProject
+Public vbComp As VBIDE.VBComponent
+Public vbCodeMod As VBIDE.CodeModule
+
+Const DEV_MODE_ON As Boolean = False
+
+'HDR - header
+Const HDR_CODE As String = "'?"
+Const HDR_BORDER_SIGN As String = "*"
+    
+'LOC - List of contents
+Const LOC_CODE As String = "'<?>"
+Const LOC_BORDER_SIGN As String = "="
+
+Const BORDER_CHARACTERS_COUNT As Long = 150
+'
+
+'?******************************************************************************************************************************************************
+'Content Number:    1
+'Name:              CallAll
+'Purpose:
+'?******************************************************************************************************************************************************
+Sub CallAll()
+    Call CreateInfoContents(CreateLOC:=True, CreateCOMPsHeader:=True, bAskMe:=False)
+End Sub
+'?******************************************************************************************************************************************************
+'Content Number:    2
+'Name:              ClearAll
+'Purpose:
+'?******************************************************************************************************************************************************
+Sub ClearAll()
+    Call ClearInfoContents(bAskMe:=True)
+End Sub
+'?******************************************************************************************************************************************************
+'Content Number:    3
+'Name:              CreateInfoContents
+'Purpose:
+'?******************************************************************************************************************************************************
+Sub CreateInfoContents(Optional CreateLOC As Boolean = True, Optional CreateCOMPsHeader As Boolean = True, Optional bAskMe As Boolean = True)
+    Dim MsgAnswer As String
+    Dim lOptionLastLine As Long
+    Dim lHdrFirstLine As Long, lHdrLastLine As Long
+    Dim lLocFirstLine As Long, lLocLastLine As Long
+    Dim lFirstComponentLine As Long
+    Dim vProcInfo As Variant
+    Dim CompNo As Long, CompLine As Long, CompName As String
+    Dim bHasComponents As Boolean
+    
+'    Set vbProj = VBE.ActiveVBProject 'Access
+    Set vbProj = ThisWorkbook.VBProject.VBE.ActiveVBProject 'Excel
+    
+    For Each vbComp In vbProj.VBComponents
+        If vbComp.Type = vbext_ct_StdModule Or vbComp.Type = vbext_ct_Document Then
+            
+            Set vbCodeMod = vbComp.CodeModule
+'            If vbComp.Name <> "Mousewheel_API" And vbComp.Name <> "Sheet3" Then GoTo Hdlr 'TO TEST
+            
+            'Components to pass
+            If vbComp.Name = "Mousewheel_API" Then GoTo Hdlr
+            Debug.Print vbComp.Name & "- Started"
+            
+            lFirstComponentLine = vbCodeMod.CountOfDeclarationLines + 1
+            lOptionLastLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:="Option", lEndLine:=lFirstComponentLine, bSearchFirstMatch:=False)
+            vProcInfo = GetProceduresFromModuleToArray(vbCodeMod)
+            
+            If IsEmpty(vProcInfo) Then bHasComponents = False Else bHasComponents = True
+        'LIST OF CONTENTS
+            If CreateLOC And bHasComponents Then
+                
+                lLocFirstLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:=LOC_CODE & LOC_BORDER_SIGN, lEndLine:=lFirstComponentLine, bSearchFirstMatch:=True)
+                lLocLastLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:=LOC_CODE & LOC_BORDER_SIGN, lStartLine:=lLocFirstLine + 1, lEndLine:=lFirstComponentLine, bSearchFirstMatch:=True)
+                
+                If lLocFirstLine > 0 Then
+                    If bAskMe Then
+                        MsgAnswer = MsgBox("Replace list of contents for " & vbComp.Name & "?", vbQuestion + vbYesNoCancel + vbDefaultButton2)
+                        If MsgAnswer = vbNo Then
+                            GoTo Hdlr
+                        ElseIf MsgAnswer = vbCancel Then
+                            End
+                        End If
+                    End If
+                    Call ClearLines(oCode:=vbCodeMod, lFirstLine:=lLocFirstLine, lLastLine:=lLocLastLine)
+                    Call AddLOC(oCode:=vbCodeMod, lAddToLine:=lLocFirstLine, InfoArray:=vProcInfo)
+                Else
+                    If bAskMe Then
+                        MsgAnswer = MsgBox("Add list of contents for " & vbComp.Name & "?", vbQuestion + vbYesNoCancel + vbDefaultButton2)
+                        If MsgAnswer = vbNo Then
+                            GoTo Hdlr
+                        ElseIf MsgAnswer = vbCancel Then
+                            End
+                        End If
+                    End If
+                    Call AddLOC(oCode:=vbCodeMod, lAddToLine:=lOptionLastLine + 1, InfoArray:=vProcInfo)
+                End If
+            End If
+            
+        'SUB/FUNC HEADERS
+            If CreateCOMPsHeader And bHasComponents Then
+                If bAskMe Then
+                    MsgAnswer = MsgBox("Replace or add component's headers for " & vbComp.Name & "?", vbQuestion + vbYesNoCancel + vbDefaultButton2)
+                    If MsgAnswer = vbNo Then
+                        GoTo Hdlr
+                    ElseIf MsgAnswer = vbCancel Then
+                        End
+                    End If
+                End If
+                
+                'Delete all componet's headers
+                Do
+                    lHdrFirstLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:=HDR_CODE & HDR_BORDER_SIGN, bSearchFirstMatch:=True)
+                    lHdrLastLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:=HDR_CODE & HDR_BORDER_SIGN, lStartLine:=lHdrFirstLine + 1, bSearchFirstMatch:=True)
+                    If Not lHdrFirstLine = 0 Then
+                        Call ClearLines(oCode:=vbCodeMod, lFirstLine:=lHdrFirstLine, lLastLine:=lHdrLastLine)
+                    End If
+                Loop While lHdrFirstLine > 0
+                
+                'Add Components headers
+                For CompNo = LBound(vProcInfo, 1) To UBound(vProcInfo, 1)
+                    CompName = vProcInfo(CompNo, 2)
+                    CompLine = vbCodeMod.ProcBodyLine(CompName, vbext_pk_Proc)
+                    Call AddHDR(oCode:=vbCodeMod, lProcNo:=CompNo, lAddToLine:=CompLine, sCompName:=CompName)
+                Next
+            End If
+        End If 'vbComp.Type = vbext_ct_StdModule
+    Debug.Print vbComp.Name & "- Finished"
+Hdlr:
+    Next vbComp
+End Sub
+'?******************************************************************************************************************************************************
+'Content Number:    4
+'Name:              GetProceduresFromModuleToArray
+'Purpose:
+'?******************************************************************************************************************************************************
+    Private Function GetProceduresFromModuleToArray(oCode As VBIDE.CodeModule) As Variant
+        Dim lLineNo As Long, lBodyLineNo As Long
+        Dim sProcName As String, sProcKind As String
+        Dim ProcKind As VBIDE.vbext_ProcKind
+        Dim TempArr As Variant
+        Dim V As Variant
+        
+        ReDim TempArr(1 To 2, 0 To 0)
+        
+        With oCode
+            lLineNo = .CountOfDeclarationLines + 1
+            Do Until lLineNo >= .CountOfLines
+                ReDim Preserve TempArr(1 To 2, 1 To UBound(TempArr, 2) + 1)
+                sProcName = .ProcOfLine(lLineNo, ProcKind)
+                lBodyLineNo = .ProcBodyLine(sProcName, ProcKind)
+                sProcKind = ProcKindString(ProcKind:=ProcKind, sLineTxt:=.Lines(lBodyLineNo, 1))
+                lLineNo = .ProcStartLine(sProcName, ProcKind) + _
+                        .ProcCountLines(sProcName, ProcKind) + 1
+                TempArr(1, UBound(TempArr, 2)) = sProcKind
+                TempArr(2, UBound(TempArr, 2)) = sProcName
+            Loop
+        End With
+        
+        'Set result (empty, vektor, array)
+        V = TempArr(1, UBound(TempArr, 2))
+        If IsEmpty(V) Then
+            GetProceduresFromModuleToArray = Empty
+            
+        ElseIf UBound(TempArr, 2) = 1 Then
+                ReDim V(1 To 1, 1 To 2)
+                V(1, 1) = TempArr(1, 1)
+                V(1, 2) = TempArr(2, 1)
+                GetProceduresFromModuleToArray = V
+            Else
+                GetProceduresFromModuleToArray = WorksheetFunction.Transpose(TempArr)
+        End If
+    End Function
+'?******************************************************************************************************************************************************
+'Content Number:    5
+'Name:              ProcKindString
+'Purpose:
+'?******************************************************************************************************************************************************
+        Function ProcKindString(ProcKind As VBIDE.vbext_ProcKind, Optional ByVal sLineTxt As String) As String
+            Select Case ProcKind
+                Case vbext_pk_Get
+                    ProcKindString = "PropGet"
+                Case vbext_pk_Let
+                    ProcKindString = "PropLet"
+                Case vbext_pk_Set
+                    ProcKindString = "Prop Set"
+                Case vbext_pk_Proc
+                    If Not IsMissing(sLineTxt) Then
+                        If sLineTxt Like "Sub *" Or sLineTxt Like "*Sub *" Then
+                            ProcKindString = "Sub" & vbTab & vbTab
+                        Else
+                            ProcKindString = "Function"
+                        End If
+                    Else
+                        ProcKindString = "Sub/Func"
+                    End If
+                Case Else
+                    ProcKindString = "Unknown Type: " & CStr(ProcKind)
+            End Select
+        End Function
+'?******************************************************************************************************************************************************
+'Content Number:    6
+'Name:              GetVBCodeLineNo
+'Purpose:
+'?******************************************************************************************************************************************************
+    Private Function GetVBCodeLineNo( _
+                                    oCode As VBIDE.CodeModule, _
+                                    sFindTxt As String, _
+                                    Optional lStartLine As Long = 0, _
+                                    Optional lStartCol As Long = 0, _
+                                    Optional lEndLine As Long = 0, _
+                                    Optional bSearchFirstMatch As Boolean = True, _
+                                    Optional lNumberOfMatch As Long = 0 _
+                                    ) As Long
+        Dim Found As Boolean
+        Dim SL As Long, EL As Long ' start/end line
+        Dim SC As Long, EC As Long ' start/end column
+        Dim NoOfOccurrence As Long
+        
+        With oCode
+            If lEndLine = 0 Then lEndLine = .CountOfLines
+            
+            If bSearchFirstMatch Then
+            'First match
+                SL = lStartLine: EL = lEndLine
+                SC = lStartCol: EC = 255
+                
+                Found = .Find(Target:=sFindTxt, StartLine:=SL, StartColumn:=SC, EndLine:=EL, EndColumn:=EC, WholeWord:=False, MatchCase:=False, patternsearch:=False)
+            Else
+            'Last match
+                SL = lStartLine
+                Do
+                    EL = lEndLine
+                    SC = EC + 1: EC = 255
+                    NoOfOccurrence = NoOfOccurrence + 1
+
+                    Found = .Find(Target:=sFindTxt, StartLine:=SL, StartColumn:=SC, EndLine:=EL, EndColumn:=EC, WholeWord:=False, MatchCase:=False, patternsearch:=False)
+
+                    If NoOfOccurrence = lNumberOfMatch Then: Exit Do  ' brake if
+                Loop While Found = True
+            End If
+        End With 'oCode
+    
+    'Set result
+        If Found Or SL > 0 Then
+            GetVBCodeLineNo = SL
+        Else
+            GetVBCodeLineNo = 0
+        End If
+    End Function
+
+'?******************************************************************************************************************************************************
+'Content Number:    7
+'Name:              AddHDR
+'Purpose:
+'?******************************************************************************************************************************************************
+        Private Sub AddHDR(oCode As VBIDE.CodeModule, ByVal lProcNo As Long, ByVal lAddToLine As Long, Optional sCompName As String)
+        Dim LineString As String
+        
+        Const DELIMETER_CHAR As String = vbTab
+        
+        With oCode
+            LineString = HDR_CODE & WorksheetFunction.Rept(HDR_BORDER_SIGN, BORDER_CHARACTERS_COUNT) 'Border
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+                
+            LineString = "'Content Number:" & DELIMETER_CHAR & lProcNo  'Number
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+                
+            LineString = "'Name:" & DELIMETER_CHAR & DELIMETER_CHAR & DELIMETER_CHAR & DELIMETER_CHAR & sCompName
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+                
+            LineString = "'Purpose:"
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+                
+            LineString = HDR_CODE & WorksheetFunction.Rept(HDR_BORDER_SIGN, BORDER_CHARACTERS_COUNT) 'Border
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+'            LineString = " "
+'                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1 ' Empty line
+
+        End With
+    End Sub
+'?******************************************************************************************************************************************************
+'Content Number:    8
+'Name:              AddLOC
+'Purpose:
+'?******************************************************************************************************************************************************
+    Private Sub AddLOC(oCode As VBIDE.CodeModule, ByVal lAddToLine As Long, Optional InfoArray As Variant)
+        Dim LineString As String
+        Dim ArrRowsCount As Long
+        Dim ArrColumnsCount  As Long
+        Dim InfoLineNo As Long
+        Dim InfoColNo As Long
+        
+        Const DELIMETER_CHAR As String = vbTab
+        
+        With oCode
+'            LineString = " "
+'                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1 ' Empty line
+            LineString = LOC_CODE & WorksheetFunction.Rept(LOC_BORDER_SIGN, BORDER_CHARACTERS_COUNT)
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+            LineString = "'Create by:" & DELIMETER_CHAR & DELIMETER_CHAR & Excel.Application.UserName '& "[" & Environ("UserName") & "]"
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+            LineString = "'Updated on:" & DELIMETER_CHAR & Format(Now(), Format:="YYYY-MM-DD HH:MM")
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+            LineString = "'"
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+            LineString = "'Contents of '" & .Parent.Name & "': "
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+    
+            'add procedures
+            If Not IsMissing(InfoArray) Then
+                ArrRowsCount = UBound(InfoArray, 1)
+                ArrColumnsCount = UBound(InfoArray, 2)
+                
+                For InfoLineNo = LBound(InfoArray, 1) To ArrRowsCount
+                    LineString = "'" & InfoLineNo
+                    For InfoColNo = LBound(InfoArray, 2) To ArrColumnsCount
+                        LineString = LineString & DELIMETER_CHAR & InfoArray(InfoLineNo, InfoColNo)
+                    Next InfoColNo
+                    If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+                Next InfoLineNo
+            End If
+            LineString = "'"
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+            LineString = "'Requirements:"
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+            LineString = "'"
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+            LineString = LOC_CODE & WorksheetFunction.Rept(LOC_BORDER_SIGN, BORDER_CHARACTERS_COUNT)
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1
+            LineString = " "
+                If DEV_MODE_ON Then Debug.Print LineString Else .InsertLines lAddToLine, LineString: lAddToLine = lAddToLine + 1 ' Empty line
+        End With
+    End Sub
+'?******************************************************************************************************************************************************
+'Content Number:    9
+'Name:              ClearInfoContents
+'Purpose:
+'?******************************************************************************************************************************************************
+Sub ClearInfoContents(Optional bAskMe As Boolean = True)
+    Dim MsgAnswer As String
+    Dim lOptionLastLine As Long
+    Dim lHdrFirstLine As Long, lHdrLastLine As Long
+    Dim lLocFirstLine As Long, lLocLastLine As Long
+    Dim lFirstComponentLine As Long
+    Dim vProcInfo As Variant
+    Dim CompNo As Long, CompLine As Long, CompName As String
+    Dim bHasComponents As Boolean
+    
+'    Set vbProj = VBE.ActiveVBProject 'Access
+    Set vbProj = ThisWorkbook.VBProject.VBE.ActiveVBProject 'Excel
+    
+    For Each vbComp In vbProj.VBComponents
+        If vbComp.Type = vbext_ct_StdModule Or vbComp.Type = vbext_ct_Document Then
+            
+            Set vbCodeMod = vbComp.CodeModule
+'            If vbComp.Name <> "Mousewheel_API" And vbComp.Name <> "Sheet3" Then GoTo Hdlr 'TO TEST
+            
+            'Components to pass
+            If vbComp.Name = "Mousewheel_API" Then GoTo Hdlr
+            Debug.Print vbComp.Name & "- Clearing started"
+            
+            lFirstComponentLine = vbCodeMod.CountOfDeclarationLines + 1
+            lOptionLastLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:="Option", lEndLine:=lFirstComponentLine, bSearchFirstMatch:=False)
+            vProcInfo = GetProceduresFromModuleToArray(vbCodeMod)
+            
+            If IsEmpty(vProcInfo) Then bHasComponents = False Else bHasComponents = True
+        
+            If bHasComponents Then
+            'LIST OF CONTENTS
+                lLocFirstLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:=LOC_CODE & LOC_BORDER_SIGN, lEndLine:=lFirstComponentLine, bSearchFirstMatch:=True)
+                lLocLastLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:=LOC_CODE & LOC_BORDER_SIGN, lStartLine:=lLocFirstLine + 1, lEndLine:=lFirstComponentLine, bSearchFirstMatch:=True)
+                
+                If lLocFirstLine > 0 Then
+                    If bAskMe Then
+                        MsgAnswer = MsgBox("Clear list of contents for " & vbComp.Name & "?", vbQuestion + vbYesNoCancel + vbDefaultButton2)
+                        If MsgAnswer = vbNo Then
+                            GoTo Hdlr
+                        ElseIf MsgAnswer = vbCancel Then
+                            End
+                        End If
+                    End If
+                    
+                    Call ClearLines(oCode:=vbCodeMod, lFirstLine:=lLocFirstLine, lLastLine:=lLocLastLine)
+                End If
+            
+            'SUB/FUNC HEADERS
+                If bAskMe Then
+                    MsgAnswer = MsgBox("Clear procedur's headers for " & vbComp.Name & "?", vbQuestion + vbYesNoCancel + vbDefaultButton2)
+                    If MsgAnswer = vbNo Then
+                        GoTo Hdlr
+                    ElseIf MsgAnswer = vbCancel Then
+                        End
+                    End If
+                End If
+                
+                'Delete all componet's headers
+                Do
+                    lHdrFirstLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:=HDR_CODE & HDR_BORDER_SIGN, bSearchFirstMatch:=True)
+                    lHdrLastLine = GetVBCodeLineNo(oCode:=vbCodeMod, sFindTxt:=HDR_CODE & HDR_BORDER_SIGN, lStartLine:=lHdrFirstLine + 1, bSearchFirstMatch:=True)
+                    If Not lHdrFirstLine = 0 Then
+                        Call ClearLines(oCode:=vbCodeMod, lFirstLine:=lHdrFirstLine, lLastLine:=lHdrLastLine)
+                    End If
+                Loop While lHdrFirstLine > 0
+            End If
+        End If 'vbComp.Type = vbext_ct_StdModule
+    Debug.Print vbComp.Name & "- Clearing finished"
+Hdlr:
+    Next vbComp
+End Sub
+'?******************************************************************************************************************************************************
+'Content Number:    10
+'Name:              ClearLines
+'Purpose:
+'?******************************************************************************************************************************************************
+    Private Sub ClearLines(oCode As VBIDE.CodeModule, lFirstLine As Long, lLastLine As Long)
+        Dim CountOfLines As Long
+        CountOfLines = lLastLine - lFirstLine + 1
+        oCode.DeleteLines StartLine:=lFirstLine, Count:=CountOfLines
+    End Sub
+
+
