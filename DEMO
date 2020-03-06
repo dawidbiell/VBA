@@ -1,0 +1,28 @@
+'[1]------------------ WERSJA DEMO -----------------------------
+Public Const DEMO_ON As Boolean = True
+Public Const ENDDATE As Date = "2020-03-15"
+
+'Private Sub Auto_Open()
+'    If DEMO_ON Then Call DEMO(ENDDATE)
+'End Sub
+'Private Sub Workbook_Open()
+'    If DEMO_ON Then Call DEMO(ENDDATE)
+'End Sub
+
+Sub DEMO(Expirience As Date)
+    Dim MsgTxt As String
+    If Date > ENDDATE Then
+        MsgTxt = MsgTxt & "Koniec wersji demo. Skontaktuj się z Autorem."
+        MsgTxt = MsgTxt & vbCrLf & vbCrLf
+        MsgTxt = MsgTxt & "Dawid Biel" & vbCrLf
+        MsgTxt = MsgTxt & "505-340-796" & vbCrLf
+        MsgTxt = MsgTxt & "dawidbiell@gmail.com" & vbCrLf
+        MsgBox MsgTxt, vbExclamation, "DEMO"
+        
+        ThisWorkbook.Protect "DemoEnd007"
+        ThisWorkbook.Close True
+    Else
+        MsgBox "Wersja demo. Ważna do " & ENDDATE, vbInformation, "DEMO" ' ". Pozostalo " & 26 - Day(Date) & " dni.", , "DEMO"
+
+    End If
+End Sub
