@@ -1,0 +1,7 @@
+Sub FreezeMe(bFreezOn As Boolean)
+    Application.ScreenUpdating = not bFreezOn
+    Application.StatusBar = Switch(bFreezOn = False, Not bFreezOn, bFreezOn=true, "Macro calculate")
+    
+    'Set FSO = Switch(pf = False, New FileSystemObject, pf = True, Nothing)
+    'MsgTxt = ""
+End Sub
