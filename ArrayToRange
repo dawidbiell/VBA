@@ -1,0 +1,8 @@
+Function ArrayToRange(ByRef rFirstCell As Range, ByRef vArray As Variant) As Boolean
+    Dim rRng As Range
+
+    Set rRng = rFirstCell.Resize(UBound(vArray, 1), UBound(vArray, 2))
+    rRng = vArray
+    
+    ArrayToRange = True
+End Function
