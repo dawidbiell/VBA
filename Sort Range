@@ -12,7 +12,7 @@ Dim lLastRow    As Long
 
 'On Error GoTo SortujZakres_Error
 
-Range.Parent.Sort.SortFields.Clear
+Rng.Parent.Sort.SortFields.Clear
 If bHeader = True Then
     lHead = xlYes
     lFirstRow = Rng.Rows(1).Row + 1
