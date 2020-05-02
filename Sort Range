@@ -4,49 +4,42 @@ Public Sub SortujZakres(Rng As Range, Schema As String, Optional bHeader As Bool
 '   Schema - schamemat sortowania : "AcG" - Kolumna A rosnąco, Kolumna C malejąco, Kolumna G rosnąco
 '   bHeader - czy podany zakres rng posiada nagłówki: Domyślnie TRUE
 
-Dim lHead       As Byte
-Dim iChr        As Long
-Dim lSort       As Long
-Dim lFirstRow   As Long
-Dim lLastRow    As Long
-
-'On Error GoTo SortujZakres_Error
-
-Rng.Parent.Sort.SortFields.Clear
-If bHeader = True Then
-    lHead = xlYes
-    lFirstRow = Rng.Rows(1).Row + 1
-Else
-    lHead = xlNo
-    lFirstRow = Rng.Rows(1).Row
-End If
-lLastRow = Rng.Rows.Count
-
-For iChr = 1 To Len(Schema)
-    If Mid(Schema, iChr, 1) Like "[A-Z]" Then lSort = xlAscending
-    If Mid(Schema, iChr, 1) Like "[a-z]" Then lSort = xlDescending
+    Dim Ws          As Worksheet
+    Dim lHead       As Byte
+    Dim iChr        As Long
+    Dim lSort       As Long
+    Dim lFirstRow   As Long
+    Dim lLastRow    As Long
     
-    ActiveWorkbook.ActiveSheet.Sort.SortFields.Add _
-        KEY:=Range(Mid(Schema, iChr, 1) & lFirstRow & ":" & Mid(Schema, iChr, 1) & lLastRow), _
-        SortOn:=xlSortOnValues, _
-        Order:=xlAscending, _
-        DataOption:=xlSortNormal
-Next
-With ActiveWorkbook.ActiveSheet.Sort
-    .SetRange Rng
-    .Header = lHead
-    .MatchCase = False
-    .Orientation = xlTopToBottom
-    .SortMethod = xlPinYin
-    .Apply
-End With
-
-' On Error GoTo 0
-'   Exit Sub
-'
-'SortujZakres_Error:
-'    MsgBox "Value: " & dblRnd & vbCrLf & _
-'            "Error Line: " & Erl & vbCrLf & _
-'            "Error: (" & Err.Number & ")-" & " [" & Err.Description & "] in procedure SortujZakres of Module Amod_STANDARD", vbCritical
+    Set Ws = Rng.Parent
+    
+    Ws.Sort.SortFields.Clear
+    If bHeader = True Then
+        lHead = xlYes
+        lFirstRow = Rng.Rows(1).Row + 1
+    Else
+        lHead = xlNo
+        lFirstRow = Rng.Rows(1).Row
+    End If
+    lLastRow = Rng.Rows.Count
+    
+    For iChr = 1 To Len(Schema)
+        If Mid(Schema, iChr, 1) Like "[A-Z]" Then lSort = xlAscending
+        If Mid(Schema, iChr, 1) Like "[a-z]" Then lSort = xlDescending
+        
+        Ws.Sort.SortFields.Add _
+            KEY:=Range(Mid(Schema, iChr, 1) & lFirstRow & ":" & Mid(Schema, iChr, 1) & lLastRow), _
+            SortOn:=xlSortOnValues, _
+            Order:=xlAscending, _
+            DataOption:=xlSortNormal
+    Next
+    With Ws.Sort
+        .SetRange Rng
+        .Header = lHead
+        .MatchCase = False
+        .Orientation = xlTopToBottom
+        .SortMethod = xlPinYin
+        .Apply
+    End With
 
 End Sub
