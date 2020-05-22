@@ -1,6 +1,5 @@
 Function OpenWorkbook(ByVal WbkFullPath As String) As Excel.Workbook
     Dim FSO         As New FileSystemObject
-
     
     If Not FSO.FileExists(WbkFullPath) Then Exit Function
     
