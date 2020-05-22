@@ -1,14 +1,16 @@
-Function OpenWorkbook(ByVal WbkFullPath As String) As Workbook
-    Dim FSO As New FileSystemObject
-    Dim WbkName As String
-
+Function OpenWorkbook(ByVal WbkFullPath As String) As Excel.Workbook
+    Dim FSO         As New FileSystemObject
+    Dim appExcel    As Excel.Application
+    
     If Not FSO.FileExists(WbkFullPath) Then Exit Function
-    WbkName = FSO.GetFileName(WbkFullPath)
-
-On Error Resume Next
-    Set OpenWorkbook = Workbooks(WbkName)
-    If Err <> 0 Then
-        Set OpenWorkbook = Workbooks.Open(Filename:=WbkFullPath, UpdateLinks:=False, ReadOnly:=True)
-    End If
-On Error GoTo 0
+    
+    On Error Resume Next
+        Set OpenWorkbook = Workbooks(WbkFullPath)
+        If Err <> 0 Then
+            Set appExcel = New Excel.Application
+                appExcel.Visible = True
+            Set OpenWorkbook = appExcel.Workbooks.Open(Filename:=WbkFullPath, UpdateLinks:=False, ReadOnly:=True)
+        End If
+    On Error GoTo 0
+    If OpenWorkbook Is Nothing Then appExcel.Quit
 End Function
