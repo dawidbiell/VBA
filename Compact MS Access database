@@ -1,0 +1,33 @@
+'Needed FIlesystemObject library
+
+
+Public Sub CompactDatabaseCustom(sDatabaseFullPath As String)
+    Dim fsoFile     As File
+    Dim sTempPath    As String
+
+    On Error GoTo ERROR_HANDLER
+    
+    Set FSO = New FileSystemObject
+    If Not FSO.FileExists(sDatabaseFullPath) Then If DEV Then Debug.Print "Path not exists " & vbCrLf: GoTo Ext
+    
+    Set fsoFile = FSO.GetFile(sDatabaseFullPath)
+    sTempPath = FSO.BuildPath(fsoFile.ParentFolder, Split(fsoFile.Name, ".")(0) & "_Compacted_" & Format(Now(), "YYYY-MM-DD hh_mm_ss") & "." & Split(fsoFile.Name, ".")(UBound(Split(fsoFile.Name, "."))))
+    
+    Debug.Print sTempPath
+    'Compact
+    DBEngine.CompactDatabase _
+            SrcName:=sDatabaseFullPath, _
+            DstName:=sTempPath, _
+            SrcLocale:=dbLangGeneral & ";pwd=" & s_DB_PASS
+            
+    fsoFile.Delete
+    
+    If Not FSO.FileExists(sDatabaseFullPath) Then
+        FSO.MoveFile sTempPath, sDatabaseFullPath
+    End If
+Ext:
+    Exit Sub
+ERROR_HANDLER:
+    TxtMsg = TxtMsg & "Couldn't copmpact ..." & Right(sDatabaseFullPath, 64) & vbCrLf
+    GoTo Ext
+End Sub
