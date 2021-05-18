@@ -1,0 +1,67 @@
+Option Explicit
+Public d_START_TIME As Date
+Public d_LAP_TIME As Date
+'
+
+Sub Stopwatch_Start()
+    d_START_TIME = Now
+    Debug.Print _
+        "Start time" & vbTab & _
+        "Lap time" & vbTab & _
+        "Difference ------------------------------"
+End Sub
+
+Sub test_Stopwatch_PrintLap()
+    Call Stopwatch_PrintLap
+    Call Stopwatch_LogLapInSheet
+End Sub
+
+Sub Stopwatch_PrintLap(Optional sPrintTxt As String = vbNullChar)
+    If CDbl(d_START_TIME) = 0 Then d_START_TIME = Now
+    
+    d_LAP_TIME = Now
+    
+    Debug.Print _
+        Format(d_START_TIME, "hh:mm:ss") & vbTab & _
+        Format(d_LAP_TIME, "hh:mm:ss") & vbTab & _
+        Format((d_LAP_TIME - d_START_TIME), "hh:mm:ss")
+        
+    d_START_TIME = d_LAP_TIME
+End Sub
+
+Sub Stopwatch_LogLapInSheet(Optional sPrintTxt As String = vbNullChar)
+    Dim Ws As Worksheet
+    Dim rRng As Range
+    Dim lId As Long
+    
+    If CDbl(d_START_TIME) = 0 Then d_START_TIME = Now
+    
+    On Error Resume Next
+        Set Ws = ThisWorkbook.Sheets("Log")
+        If Err.Number > 0 Then
+            Set Ws = ThisWorkbook.Sheets.Add(After:=ActiveSheet)
+        End If
+    On Error GoTo 0
+    
+    lId = WorksheetFunction.CountA(Ws.Columns(1))
+    Set rRng = Ws.Cells(lId + 1, 1)
+    If lId = 0 Then
+      rRng.Offset(0, 0) = "User"
+      rRng.Offset(0, 1) = "Start"
+      rRng.Offset(0, 2) = "Czas etapu"
+      rRng.Offset(0, 3) = "Łaczny czas"
+      rRng.Offset(0, 4) = "Etap info"
+      
+      Set rRng = rRng.Offset(1, 0)
+    End If
+    
+    d_LAP_TIME = Now
+    
+    rRng.Offset(0, 0) = Environ$("UserName")
+    rRng.Offset(0, 1) = Format(d_START_TIME, "hh:mm:ss")
+    rRng.Offset(0, 1) = Format(d_LAP_TIME, "hh:mm:ss")
+    rRng.Offset(0, 3) = Format(d_LAP_TIME - d_START_TIME, "hh:mm:ss")
+    rRng.Offset(0, 4) = sLogInfo
+    
+    d_START_TIME = d_LAP_TIME
+End Sub
