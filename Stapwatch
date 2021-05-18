@@ -8,12 +8,8 @@ Sub Stopwatch_Start()
     Debug.Print _
         "Start time" & vbTab & _
         "Lap time" & vbTab & _
-        "Difference ------------------------------"
-End Sub
-
-Sub test_Stopwatch_PrintLap()
-    Call Stopwatch_PrintLap
-    Call Stopwatch_LogLapInSheet
+        "Difference" & vbTab & _
+        "------------------------------"
 End Sub
 
 Sub Stopwatch_PrintLap(Optional sPrintTxt As String = vbNullChar)
@@ -24,12 +20,13 @@ Sub Stopwatch_PrintLap(Optional sPrintTxt As String = vbNullChar)
     Debug.Print _
         Format(d_START_TIME, "hh:mm:ss") & vbTab & _
         Format(d_LAP_TIME, "hh:mm:ss") & vbTab & _
-        Format((d_LAP_TIME - d_START_TIME), "hh:mm:ss")
+        Format((d_LAP_TIME - d_START_TIME), "hh:mm:ss") & vbTab & _
+        sPrintTxt
         
     d_START_TIME = d_LAP_TIME
 End Sub
 
-Sub Stopwatch_LogLapInSheet(Optional sPrintTxt As String = vbNullChar)
+Sub Stopwatch_LogLapInSheet(Optional sLogTxt As String = vbNullChar)
     Dim Ws As Worksheet
     Dim rRng As Range
     Dim lId As Long
@@ -38,8 +35,9 @@ Sub Stopwatch_LogLapInSheet(Optional sPrintTxt As String = vbNullChar)
     
     On Error Resume Next
         Set Ws = ThisWorkbook.Sheets("Log")
-        If Err.Number > 0 Then
+        If Err.Number <> 0 Then
             Set Ws = ThisWorkbook.Sheets.Add(After:=ActiveSheet)
+            Ws.Name = "Log"
         End If
     On Error GoTo 0
     
@@ -53,15 +51,18 @@ Sub Stopwatch_LogLapInSheet(Optional sPrintTxt As String = vbNullChar)
       rRng.Offset(0, 4) = "Etap info"
       
       Set rRng = rRng.Offset(1, 0)
+      
     End If
     
     d_LAP_TIME = Now
     
     rRng.Offset(0, 0) = Environ$("UserName")
     rRng.Offset(0, 1) = Format(d_START_TIME, "hh:mm:ss")
-    rRng.Offset(0, 1) = Format(d_LAP_TIME, "hh:mm:ss")
+    rRng.Offset(0, 2) = Format(d_LAP_TIME, "hh:mm:ss")
     rRng.Offset(0, 3) = Format(d_LAP_TIME - d_START_TIME, "hh:mm:ss")
-    rRng.Offset(0, 4) = sLogInfo
+    rRng.Offset(0, 4) = sLogTxt
     
     d_START_TIME = d_LAP_TIME
+    
+    Ws.Columns.AutoFit
 End Sub
